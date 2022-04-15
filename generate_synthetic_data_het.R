@@ -4,52 +4,14 @@
 #' @description
 #' Generates synthetic data set based on different GPS models and covariates.
 #'
-#' @param sample_size Number of data samples.
-#' 
-#' @param outcome_type continuous or binary outcome
-#' 
-#' @param outcome_sd Standard deviation used to generate the outcome in the synthetic data set
-#' 
-#' @param gps_spec A numerical value (1-7) that indicates the GPS model
-#' used to generate synthetic data. See the code for more details.
-
-#' @param cova_spec A numerical value (1-2) to modify the covariates. If 
-#' cova_spec = 1, covariates are mutually independent. See the
-#' code for more details.
-#' 
-#' @param heterogenous_intercept Allow intercepts to differ by effect modifier level
-#' 
-#' @param em_spec A numerical value (1-2) that indicates the effect modification model.
-#' em_spec = 1 -> separate main effects of effect modifiers on treatment effect
-#' (i.e. no interaction between effect modifiers)
-#' em_spec = 2 -> interaction between effect modifiers
-#' 
-#' @param em_as_confounder Effect modifier 1 has linear association with treatment 
-#' (i.e. is a confounder)
-#'
-#' @return
-#' \code{synthetic_data}: The function returns a data.frame saved the
-#'  constructed synthetic data.
-#'
-#' @export
-#'
-#' @examples
-#'
-#' set.seed(298)
-#' s_data <- generate_syn_data(sample_size=100,
-#'                                   outcome_sd = 10, gps_spec = 1,
-#'                                   cova_spec = 1)
-#'
 #'Required Libraries: truncnorm, dplyr
 generate_syn_data_het <- function(sample_size=10000, outcome_type = 'continuous', outcome_sd = 1,
-                              gps_spec = 1, cova_spec = 1, em_spec = 1, heterogenous_intercept = FALSE, em_as_confounder = FALSE, 
+                              gps_spec = 1, em_spec = 1, heterogenous_intercept = FALSE, em_as_confounder = FALSE, 
                               beta = 1) {
 
   if (sample_size < 0 || !is.numeric(sample_size)){
     stop("'sample_size' should be a positive ineteger numer.")
    }
-
-  #TODO: Check other input arguments.
 
   size <- sample_size
 
@@ -72,9 +34,6 @@ generate_syn_data_het <- function(sample_size=10000, outcome_type = 'continuous'
   em4 <- rbinom(size, 1, 0.2)
   
   if (gps_spec == 1) {
-    # modified Xiao's propensity function to ensure treatment >= 0. Note that mu is not the expected propensity.
-    # mu <- (- 0.8 + 0.1 * cf[ ,1] + 0.1 * cf[ ,2] - 0.1 * cf[ ,3]
-    #        + 0.2 * cf[ ,4] + 0.1 * cf5 + 0.1 * cf6) * 9 + 17
     mu <- 3
     treat <- rtruncnorm(size,a=0,b=Inf,mean=mu,sd=5)
     # currently not using other gps_spec values
@@ -118,11 +77,11 @@ generate_syn_data_het <- function(sample_size=10000, outcome_type = 'continuous'
 
   }
   
+  # not currently using this
   if (em_as_confounder) {
     treat <- treat + em1*3
   }
 
-  
   # bin exposure level into 20 categories - only necessary for grouped outcomes in the binary case
   if (outcome_type == 'binary') {
     treat_df <- data.frame(treat = treat) %>%
@@ -134,7 +93,6 @@ generate_syn_data_het <- function(sample_size=10000, outcome_type = 'continuous'
     treat_df <- data.frame(treat = treat) %>%
       dplyr::mutate(avg_treat = treat)
   }
-  
     
   # produce outcome Y
   mu <- as.numeric()
@@ -178,20 +136,6 @@ generate_syn_data_het <- function(sample_size=10000, outcome_type = 'continuous'
   #   #colnames(simulated_data)[2:12]<-c("cf1","cf2","cf3","cf4","cf5","cf6","em1","em2","em3","em4")
   # }
 
-  # # why are the covariates changed after the propensity score model is used to define treatment??
-  # if (cova_spec == 1) {
-  #   cf = cf
-  # } else if (cova_spec == 2) {
-  # 
-  #   cf[,1] <- exp(cf[ ,1] / 2)
-  #   cf[,2] <- (cf[ ,2] / (1 + exp(cf[ ,1]))) + 10
-  #   cf[,3] <- (cf[ ,1] * cf[ ,3]/25 + 0.6) ^ 3
-  #   cf[,4] <- (cf[ ,2] + cf[ ,4] + 20) ^ 2
-  # 
-  # } else {
-  #   stop(paste("cova_spec: ", cova_spec, ", is not a valid value."))
-  # }
-  
   if (outcome_type == 'continuous') {
     simulated_data<-data.frame(cbind(Y,treat,cf, cf5, cf6, em1, em2, em3, em4)) %>%
       mutate_at(vars(em1, em2, em3, em4), as.factor)
