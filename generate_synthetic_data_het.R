@@ -5,7 +5,7 @@
 #' Generates synthetic data set based on different GPS models and covariates.
 #'
 #'Required Libraries: truncnorm, dplyr
-generate_syn_data_het <- function(sample_size=10000, outcome_type = 'continuous', outcome_sd = 1,
+generate_syn_data_outcome <- function(sample_size=10000, outcome_type = 'continuous', outcome_sd = 1,
                               gps_spec = 1, em_spec = 1, heterogenous_intercept = FALSE, em_as_confounder = FALSE, 
                               beta = 1) {
 

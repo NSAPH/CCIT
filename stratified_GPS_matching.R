@@ -1,4 +1,6 @@
-stratified_GPS_matching <- function(data, delta_n) {
+stratified_GPS_matching <- function(data, delta_n, bin_seq = bin_seq) {
+  
+  data <- data %>% tibble::rowid_to_column('orig_id')
   
   matched <- data.frame()
   
@@ -7,8 +9,9 @@ stratified_GPS_matching <- function(data, delta_n) {
       for (k in levels(data$em3)) {
         for (l in levels(data$em4)) {
           sub_pop <- data %>%
-            filter(em1 == i, em2 == j, em3 == k, em4 == l)
-          pseudo_pop_fit <- generate_pseudo_pop(sub_pop$Y, 
+            filter(em1 == i, em2 == j, em3 == k, em4 == l) %>%
+            tibble::rowid_to_column('new_id')
+          pseudo_pop_fit <- generate_pseudo_pop(1:nrow(sub_pop), # why is the outcome required?
                                                 sub_pop$treat, 
                                                 sub_pop[, sapply(1:6, function(x) {paste0('cf',x)})],
                                                 ci_appr = "matching",
@@ -16,6 +19,7 @@ stratified_GPS_matching <- function(data, delta_n) {
                                                 gps_model = "parametric",
                                                 use_cov_transform = FALSE,
                                                 #transformers = list("pow2", "pow3"),
+                                                bin_seq = bin_seq,
                                                 sl_lib = c("m_xgboost"),
                                                 params = list("xgb_nrounds"=50,
                                                               "xgb_max_depth"=6,
@@ -31,9 +35,10 @@ stratified_GPS_matching <- function(data, delta_n) {
                                                 matching_fun = "matching_l1",
                                                 delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                                 scale = 1.0)
-          
-          matched <- rbind(matched, pseudo_pop_fit$pseudo_pop %>% mutate(em1 = i, em2 = j, em3 = k, em4 =l))
-          
+          sub_pop_pseudo <- pseudo_pop_fit$pseudo_pop %>%
+            left_join(sub_pop, by = c('row_index' = 'new_id', 'cf1','cf2', 'cf3', 'cf4', 'cf5', 'cf6'))
+          # need to convert row_index to original row_index in data
+          matched <- rbind(matched, sub_pop_pseudo)
         }
       }
     }
