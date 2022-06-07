@@ -34,6 +34,7 @@ generate_syn_data_outcome <- function(sample_size=10000, outcome_type = 'continu
   em4 <- rbinom(size, 1, 0.2)
   
   if (gps_spec == 1) {
+    # need to change this, but first need to figure out if this is making the bias bettter
     mu <- 3
     treat <- rtruncnorm(size,a=0,b=Inf,mean=mu,sd=5)
     # currently not using other gps_spec values

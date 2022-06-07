@@ -6,44 +6,26 @@
 synth_data_covs <- generate_syn_data_covs(sample_size = 20000, 
                                     gps_spec = 1)
 
-synth_data_outcome <- do.call(generate_syn_data_outcome, mutate(synth_data_covs, beta = 0.5))
+synth_data_outcome <- do.call(generate_syn_data_outcome, mutate(synth_data_covs, beta = 1))
 
-# # continuous outcome. EM effect on intercept
-# synth_data <- generate_syn_data_het(sample_size = 20000, outcome_type = 'continuous',
-#                                     gps_spec = 1, em_spec = 2, cova_spec = 1, heterogenous_intercept = TRUE, 
-#                                     em_as_confounder = FALSE)
-# 
-# # count/binary outcome. 
-# synth_data3 <- generate_syn_data_het(sample_size = 200000, outcome_type = 'binary',
-#                                     gps_spec = 1, em_spec = 0, cova_spec = 1, heterogenous_intercept = FALSE, 
-#                                     em_as_confounder = FALSE)
-synth_data3 %>% 
-  mutate(treat_level = cut(treat, breaks = 20)) %>%
-  mutate(`Effect Modifiers` = interaction(em1, em2)) %>%
-  mutate(`Effect Modifiers` = recode_factor(`Effect Modifiers`, 
-                                            `0.0` = "E1 = 0, E2 = 0",
-                                            `1.0` = "E1 = 1, E2 = 0",
-                                            `0.1` = "E1 = 0, E2 = 1",
-                                            `1.1` = "E1 = 1, E2 = 1")) %>%
-  
-  group_by(treat_level, `Effect Modifiers`, mu) %>%
-  #summarise(Y = sum(Y), n = n())
-  summarise(outcome_rate = sum(Y)/n()) %>%
-  ggplot(aes(x = treat_level, color = `Effect Modifiers`, group = `Effect Modifiers`)) + geom_point(aes(y = outcome_rate)) + geom_line(aes(y = mu)) + 
-  theme(axis.text.x = element_text(angle = 90))
-ggsave(filename = 'effect_modification_binary.png')
+synth_data_outcome <- generate_syn_data_outcome()
 
-synth_data <- synth_data2
   ################################## Optionally, plot data to visualize #####################################
 # plot exposure vs each covariate
-synth_data %>% 
-  pivot_longer(c(cf1,cf2,cf3,cf4,cf5,cf6), names_to = 'cf', values_to = 'cov_value') %>%
+matched.c$matched.exploration.sample %>% 
+  gather(c(cf1,cf2,cf3,cf4,cf5,cf6), key = 'cf', value = 'cov_value') %>%
+  ggplot(aes(x = cov_value, y = treat)) + 
+  geom_point() + 
+  facet_wrap(vars(cf))
+
+matched.c$exploration.sample_covs %>% 
+  gather(c(cf1,cf2,cf3,cf4,cf5,cf6), key = 'cf', value = 'cov_value') %>%
   ggplot(aes(x = cov_value, y = treat)) + 
   geom_point() + 
   facet_wrap(vars(cf))
 
 # plot outcome vs exposure by effect modifier group - continuous outcome
-matched.exploration.sample %>% 
+matched$matched.exploration.sample %>% 
   mutate_at(vars(em1, em2), as.factor) %>%
   mutate(`Effect Modifiers` = interaction(em1, em2)) %>%
   mutate(`Effect Modifiers` = recode_factor(`Effect Modifiers`, 
@@ -82,25 +64,27 @@ matched.exploration.sample <- stratified_GPS_matching(exploration.sample, delta_
 matched.validation.sample <- stratified_GPS_matching(exploration.sample, delta_n)
 
 # absolute correlation unmatched
-data.table::setDT(synth_data)
-cor_val_unmatched <- absolute_corr_fun(synth_data[,2], synth_data[, 3:(length(synth_data))])
-cor_val_unmatched <- absolute_corr_fun(synth_data[,2], synth_data[, 3:(length(synth_data)-2)])
+data.table::setDT(matched.c$exploration.sample_covs)
+cor_val_unmatched <- absolute_corr_fun(matched.c$exploration.sample_covs[,'treat'], matched.c$exploration.sample_covs[, 1:6])
+data.table::setDT(matched.c$matched.exploration.sample)
+cor_val_matched <- absolute_corr_fun(matched.c$matched.exploration.sample[,'treat'], 
+                                     matched.c$matched.exploration.sample[,6:11])
 
 print(cor_val_unmatched)
 
-matched.exploration.sample <- matched.exploration.sample %>%
-  mutate_at(vars(em1, em2, em3, em4), as.factor)
+# matched.exploration.sample <- matched.exploration.sample %>%
+#   mutate_at(vars(em1, em2, em3, em4), as.factor)
+# 
+# # absolute correlation matched
+# data.table::setDT(matched.exploration.sample)
+# cor_val_matched <- absolute_corr_fun(matched.exploration.sample[,2], 
+#                                      matched.exploration.sample[, 6:length(matched.exploration.sample)])
+# print(cor_val_matched)
 
-# absolute correlation matched
-data.table::setDT(matched.exploration.sample)
-cor_val_matched <- absolute_corr_fun(matched.exploration.sample[,2], 
-                                     matched.exploration.sample[, 6:length(matched.exploration.sample)])
-print(cor_val_matched)
-
-abs_cor = data.frame(cov = c('em1', 'em2', 'em3', 'em4', 'cf1', 'cf2', 'cf3', 'cf4', 'cf5', 'cf6'),
+abs_cor = data.frame(cov = c('cf1', 'cf2', 'cf3', 'cf4', 'cf5', 'cf6'),
                      #names(synth_data)[3:length(names(synth_data))],
                      unmatched = cor_val_unmatched$absolute_corr, matched = cor_val_matched$absolute_corr) %>%
-  pivot_longer(cols = c(unmatched, matched), names_to = 'dataset', values_to = 'absolute correlation')
+  gather(c(unmatched, matched), key = 'dataset', value = 'absolute correlation')
 
 ggplot(abs_cor, aes(x = cov, y = `absolute correlation`, color = dataset, group = dataset)) + geom_point() + geom_line()
 ggsave('abs_cor.png')

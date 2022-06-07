@@ -33,16 +33,20 @@ generate_syn_data_covs <- function(sample_size=10000,
   em4 <- rbinom(size, 1, 0.2)
   if (gps_spec == 1) {
     # modified Xiao's propensity function to ensure treatment >= 0. Note that mu is not the expected propensity.
-    mu <- (- 0.8 + 0.1 * cf[ ,1] + 0.1 * cf[ ,2] - 0.1 * cf[ ,3]
-           + 0.2 * cf[ ,4] + 0.1 * cf5 + 0.1 * cf6) * 9 + 17
+    mu <- 3
     treat <- rtruncnorm(size,a=0,b=Inf,mean=mu,sd=5)
     # currently not using other gps_spec values
   } else if (gps_spec == 2) {
-    treat <- ((- 0.8 + 0.1 * cf[ ,1] + 0.1 * cf[ ,2] - 0.1 * cf[ ,3]
-               + 0.2 * cf[ ,4] + 0.1 * cf5 + 0.1 * cf6) * 15 + 22 + stats::rt(size,2))
+    mu <- (- 0.8 + 0.1 * cf[ ,1] + 0.1 * cf[ ,2] - 0.1 * cf[ ,3]
+           + 0.2 * cf[ ,4] + 0.1 * cf5 + 0.1 * cf6) * 9 + 17 
+    #treat <- rnorm(size,mean=mu,sd=5)
     
-    treat[which(treat < (-5))] <- (-5)
-    treat[which(treat > (25))] <- (25)
+    treat <- rtruncnorm(size,a=0,b=Inf,mean=mu,sd=5)
+    # treat <- ((- 0.8 + 0.1 * cf[ ,1] + 0.1 * cf[ ,2] - 0.1 * cf[ ,3]
+    #            + 0.2 * cf[ ,4] + 0.1 * cf5 + 0.1 * cf6) * 15 + 22 + stats::rt(size,2))
+    # 
+    # treat[which(treat < (-5))] <- (-5)
+    # treat[which(treat > (25))] <- (25)
     
   } else if (gps_spec == 3) {
     
